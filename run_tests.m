@@ -1,0 +1,2 @@
+% running tests
+run_gaussain_process_models_tests
