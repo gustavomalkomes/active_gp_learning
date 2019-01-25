@@ -1,22 +1,19 @@
 Active GP Learning
 ==================================
 
-This package provides a set of tools for performing active-learning with 
-Gaussian Processes. 
+This package provides a set of tools for performing active-learning with
+Gaussian Processes.
 
 Usage
 ---------------
 
 This is a work in progress but you can check the two demos in the `demo`
-folder. 
+folder.
 
 Depedencies
 ---------------
 
 You must have the following softwares in your MATLAB path:
-The script `startup.m` will take care of it if you already have them
-in a parent folder. You can also run `get_dependencies.sh` to download
-this softwares.
 
  > minFunc: https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html
 
@@ -24,7 +21,12 @@ this softwares.
 
  > gpml_extensions: https://github.com/rmgarnett/gpml_extensions.git
 
+The script `startup.m` will take care of it if you already have them
+in a parent folder. But please check these websites first.
+
+You can also run `get_dependencies.sh` to download this softwares.
+
 Tests
 ---------------
 
-Running `run_tests` will trigger a couple of tests. 
+Running `run_tests` will trigger a couple of tests.
