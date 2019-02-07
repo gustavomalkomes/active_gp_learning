@@ -22,7 +22,9 @@ classdef GpModelTest < matlab.unittest.TestCase
             y = sin(3*x) + 0.1*randn(20, 1);  % 20 noisy training targets
             xs = linspace(-3, 3, 61)';        % 61 test inputs             
 
-            testCase.verifyError(@model.predict,'prediction_error:thetaIsEmpty')
+            testCase.verifyError(@model.predict, ...
+                'prediction_error:thetaIsEmpty')
+            
             model = model.train(x,y);
             ys = model.predict(x,y,xs);
             

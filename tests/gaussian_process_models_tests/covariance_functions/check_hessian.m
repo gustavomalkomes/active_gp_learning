@@ -1,3 +1,5 @@
+% simple numerical test verification
+
 function [total_diff,cdX,ndX] = check_hessian(fun_fx,fun_dx, X, e,n)
 
 % finite difference
@@ -32,6 +34,5 @@ for i = 1:d
         total_diff = total_diff + diff;        
     end
 end
-
 
 end

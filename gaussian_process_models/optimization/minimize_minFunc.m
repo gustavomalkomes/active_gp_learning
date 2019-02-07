@@ -64,9 +64,9 @@ function [best_hyperparameters, best_nlZ, best_minFunc_output] = ...
 % parse optional inputs
 parser = inputParser;
 
-addParamValue(parser, 'initial_hyperparameters', []);
-addParamValue(parser, 'num_restarts', 3);
-addParamValue(parser, 'minFunc_options', ...
+addParameter(parser, 'initial_hyperparameters', []);
+addParameter(parser, 'num_restarts', 3);
+addParameter(parser, 'minFunc_options', ...
     struct('Display', 'off', ...
     'MaxIter', 500,   ...
     'method', 'lbfgs'));
@@ -91,10 +91,11 @@ f = @(hyperparameter_values) gp_optimizer_wrapper(...
     y ...
 );
 
+assert(numel(f(unwrap(initial_hyperparameters))) == 1)
+
 [best_hyperparameter_values, best_nlZ, exitflag, best_minFunc_output] = ...
     minFunc(f, unwrap(initial_hyperparameters), options.minFunc_options);
 
-assert( numel(f(unwrap(initial_hyperparameters))) == 1)
 
 if exitflag < 0
     warning('MinFunc failed trying to optimize initial_hyperparameters. Random restart\n');
@@ -108,36 +109,15 @@ for i = 1:options.num_restarts
     [hyperparameter_values, nlZ, exitflag, minFunc_output] = ...
         minFunc(f, unwrap(hyperparameters), options.minFunc_options);
     
-    try
-        theta = rewrap(initial_hyperparameters, hyperparameter_values);
-        K = feval(model.covariance_function{:}, theta.cov, x);
-        L = chol(fix_pd_matrix(K));
-    catch
+
+    theta = rewrap(initial_hyperparameters, hyperparameter_values);
+    K = feval(model.covariance_function{:}, theta.cov, x);
+    [~,p] = chol(K);
+    if p > 0
         nlZ = +inf;
         exitflag = -1;
     end
     
-    % if minFunc have failed
-    if exitflag < 0
-        for j = 1:10
-            hyperparameters = model.prior();            
-            
-            warning('MinFunc failed trying to optimize the hyperparameters. N# failures is %d out of 10\n', j);
-            [hyperparameter_values, nlZ, exitflag, minFunc_output] = ...
-                minFunc(f, unwrap(hyperparameters), options.minFunc_options);
-            
-            try
-                theta = rewrap(initial_hyperparameters, hyperparameter_values);
-                K = feval(model.covariance_function{:}, theta.cov, x);
-                L = chol(fix_pd_matrix(K));
-            catch
-                nlZ = +inf;
-                exitflag = -1;
-            end
-            if exitflag > 0
-                break;
-            end
-        end
     end
     
     % saving best values

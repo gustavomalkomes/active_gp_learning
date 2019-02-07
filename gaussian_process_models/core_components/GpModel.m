@@ -20,7 +20,7 @@ classdef GpModel
         % attributes saved during training
         %
         theta % lastest model hyperparameters
-        L
+        L % choles
         nlZ % the negative log MLE/MAP
         HnlZ % a struct containing the Hessian of the negative log MAP/MLE
         posterior % posterior structu as in GPML
@@ -73,12 +73,13 @@ classdef GpModel
             obj.optimization_options.display = 2;
             obj.optimization_options.minFunc_options.Display  = 'off';
             obj.optimization_options.minFunc_options.MaxIter  = 1000;
+            obj.optimization_options.minimize_options = [];
             
             
         end
         %
         % GP functions
-        %        
+        %
         % perform predictions using the prediction_method
         % we assume the prediction method has the same usage
         % as the gp.m function from the GPML toolkit
@@ -87,12 +88,12 @@ classdef GpModel
                 predict(obj, x_train, y_train, x_star)
             
             if isempty(obj.theta)
-                error('prediction_error:thetaIsEmpty', ...
+                error('AGPL:GpModel:prediction:thetaIsEmpty', ...
                     'You must train before predict');
             end
             
             if isempty(y_train)
-               y_train = obj.posterior;
+                y_train = obj.posterior;
             end
             
             [ymu, ys2, fmu, fs2, log_probabilities] = obj.prediction_method(...
@@ -106,17 +107,13 @@ classdef GpModel
                 x_star);
         end
         
-        % train hyperparameters
-        % update the model with the values training points (x,y)
-        % and compute the model evidence
+        % update rotine 
+        function [obj] = update(obj, x_train, y_train)
+            obj = obj.train(x_train, y_train);
+        end
+        
+        % train hyperparameters using an (external) optimization procedure
         function [obj] = train(obj, x_train, y_train)
-            
-            if isfield(obj.optimization_options, 'num_restarts')
-                obj.optimization_options.num_restarts = ...
-                    obj.optimization_options.num_restarts + 1;
-            else
-                obj.optimization_options.num_restarts = 2;
-            end
             
             if obj.optimization_options.display > 0
                 number_of_parameters = numel(obj.theta);
@@ -129,107 +126,70 @@ classdef GpModel
             
             initial_theta = obj.theta;
             
-            % This try/catch is too general and it can be very annoying
-            % if you are debuging something. 
-            % The idea is to have a fallback procedure in case that 
-            % the second-order optimization (minFunc) fails. If we need to
-            % fall back, we do a simple Conjugate Gradient Descent 
-            % method using `minimize.m`. 
-            % Since it was not trivial to add failures to minFunc,
-            % I am using this general try/catch that my catch
-            % undesired exceptions. 
-            % If you are having trouble comment the try/catch and 
-            % make sure all the inputs to minimize_minFunc are corect.
+            start_opt_time = tic;
             try
-                % minFunc
-                tic;
-                [map_theta, ~, minFunc_output] = ...
+                [new_theta, new_nlZ, opt_output] = ...
                     minimize_minFunc(obj, x_train, y_train, ...
                     'initial_hyperparameters', initial_theta, ...
                     'num_restarts', obj.optimization_options.num_restarts, ...
                     'minFunc_options', obj.optimization_options.minFunc_options);
-                optimization_time=toc;
-                
-            catch
-                % if minFunc fails, try minimize
-                warning('minFunc failed. Please, read this part of the code to understand why.')
-                fprintf('minFunc failed. Starting minimize.m\n');
-                minFunc_output = [];
-                tic;
-                map_theta = minimize_restart(obj,x_train,y_train) ;
-                optimization_time=toc;
+            catch ME
+                switch ME.identifier
+                    case 'AGPL:minimize_minFunc'
+                        warning('MinFunc minimize failed. Using minimize.m'); 
+                        try
+                            [new_theta, new_nlZ, opt_output] = ...
+                                minimize_minimize(obj, x_train, y_train, ...
+                                'initial_hyperparameters', initial_theta, ...
+                                'num_restarts', obj.optimization_options.num_restarts, ...
+                                'minimize_options', obj.optimization_options.minimize_options);
+                        catch
+                            error('AGPL:GpModel:train','Optimization failed'); 
+                        end
+                    otherwise
+                        rethrow(ME)
+                end                
             end
-
-            if isequal(obj.inference_method, @infExact)
-                [post, nlZ, ~] = feval(obj.inference_method, map_theta, ...
-                    obj.mean_function, obj.covariance_function, obj.likelihood, x_train, y_train);
-                hessian_computation_time = 0;
-                L = [];
-                HnlZ = [];
-            else % here we must be doing exact_inference
-                assert(isequal( ... 
-                    obj.inference_method{1}, ...
-                    @inference_with_prior) ...
-                )
-                assert(isequal( ... 
-                    obj.inference_method{2}, ...
-                    @exact_inference) ...
-                )
-                tic;
-                % computing the Hessian
-                [post, nlZ, ~, ~, ~, HnlZ] = ...
-                    feval(obj.inference_method{:}, map_theta, ...
-                    obj.mean_function, obj.covariance_function, ...
-                    obj.likelihood, x_train, y_train);
-                % check if the Hessian is positive definite
-                [L,p] = chol(HnlZ.value);
-                
-                if (p > 0)
-                    warning('Hessian is not positive definite. Fixing matrix');
-                    fixed_H = fix_pd_matrix(HnlZ.value);
-                    L = chol(fixed_H);
-                end
-                hessian_computation_time = toc;
-            end
+            obj.optimization_time = toc(start_opt_time);
             
-            % updating (hyp)parameters and saving Hessian informations
-            obj.theta             = map_theta;
-            obj.HnlZ              = HnlZ;
-            obj.L                 = L;
-            obj.nlZ               = nlZ;
-            obj.posterior         = post;
-            obj.optimization_time = optimization_time;
-            obj.hessian_time      = hessian_computation_time;
+            % updating (hyp)parameters
+            obj.theta                   = new_theta;
+            obj.negative_log_likelihood = new_nlZ;
+            obj.theta_hessian           = opt_output.HnlZ;
+            obj.theta_posterior         = opt_output.post;
             
             if obj.optimization_options.display > 0
                 fprintf('%s lZ: %-4.2f     cov_hyp: %-3d\tcov_name: %-50s\n', ...
-                    datestr(now,'yy-mmm-dd-HH:MM'), -nlZ, ...
+                    datestr(now,'yy-mmm-dd-HH:MM'), -obj.nlZ, ...
                     str2num(feval(obj.covariance_function{:})), ...
                     obj.covariance.name);
             end
             
             if obj.optimization_options.display > 1 ...
-                    && ~isempty(minFunc_output)
+                    && ~isempty(opt_output)
                 
-                if isfield(minFunc_output, 'iterations')
+                if isfield(opt_output, 'iterations')
                     fprintf('\t\tcov_hyp: %-3d   iter:%-4d        fun_count:%-4d \t\t %4.2f seconds\n', ...
                         str2num(feval(obj.covariance_function{:})), ...
-                        minFunc_output.iterations, minFunc_output.funcCount, ...
-                        optimization_time);
+                        minFunc_output.iterations, ...
+                        opt_output.funcCount, ...
+                        opt_output);
                 end
                 
                 fprintf('\t\tcov_hyp: %-3d   H_time:%-4.2f seconds \t\t\t total_time: %4.2f seconds\n', ...
                     str2num(feval(obj.covariance_function{:})), ...
                     hessian_computation_time, ...
-                    hessian_computation_time+optimization_time);
+                    hessian_computation_time+obj.optimization_time);
                 
                 if isfield(minFunc_output, 'firstorderopt')
                     fprintf('\t\tcov_hyp: %-3d   opt: %-2.8f \t\t\t\t %s\n\n', ...
                         str2num(feval(obj.covariance_function{:})), ...
-                        minFunc_output.firstorderopt, minFunc_output.message);
+                        minFunc_output.firstorderopt, ...
+                        minFunc_output.message);
                 end
             end
         end
+        
         % compute laplace approximation of the model evidence
         % Laplace approximation to model evidence is
         %
@@ -240,13 +200,16 @@ classdef GpModel
         function result = log_evidence(obj)
             
             % model L is the cholesky decomposition of the Hessian matrix
-            d = size(obj.L,1);
+            d = size(obj.posterior.L,1);
             
             % computing the log evidence
-            % applying the following trick: log(det(HnlZ.H))/2 =
-            %   = sum(log(diag(chol(HnlZ.H))))
-            % log_evidence = -nlZ + (d/2)*log(2*pi)
-            %   - sum(log(diag(chol(HnlZ.value))));
+            %
+            % applying the following trick: 
+            %   log(det(H))/2 = sum(log(diag(chol(H))))
+            %                      
+            % log_evidence = -nlZ + (d/2)*log(2*pi) - sum(log(diag(L)));
+            %
+            % where L = chol(HnlZ)
             
             % precompting log(2\pi) / 2
             half_log_2pi = 0.918938533204673;

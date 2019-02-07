@@ -18,7 +18,6 @@ classdef CovarianceGrammar
             
             assert(isa(hyperprior, 'Hyperpriors'))
             
-            
             n = numel(base_kernels_names);
             base_kernels = cell(1,n);
             for i = 1:n

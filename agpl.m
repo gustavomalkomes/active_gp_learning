@@ -50,10 +50,10 @@ context                = [];
 for i = 1:problem.budget
     % update models with current observations
     x_train = x(1:num_init_points+i-1, :);
-    y_train = x(1:num_init_points+i-1, :);
+    y_train = y(1:num_init_points+i-1, :);
     
     tstart_update             = tic;
-    model = model.train(x_train, y_train);
+    model = model.update(x_train, y_train);
     time_update               = toc(tstart_update);
     total_time_update(i)      = time_update;
     
