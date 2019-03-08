@@ -23,7 +23,7 @@ classdef GpModelTest < matlab.unittest.TestCase
             xs = linspace(-3, 3, 61)';        % 61 test inputs             
 
             testCase.verifyError(@model.predict, ...
-                'prediction_error:thetaIsEmpty')
+                'AGPL:GpModel:prediction:thetaIsEmpty')
             
             model = model.train(x,y);
             ys = model.predict(x,y,xs);

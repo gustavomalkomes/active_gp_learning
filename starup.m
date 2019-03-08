@@ -1,4 +1,4 @@
-% script to load paths, assume they are in a parent folder
+% script to load paths, assuming they are in a parent folder
 
 if ~exist('gp.m', 'file')
     addpath(genpath('../gpml-matlab-v3.6'));

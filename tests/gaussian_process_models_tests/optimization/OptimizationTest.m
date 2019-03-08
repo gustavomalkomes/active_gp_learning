@@ -1,10 +1,10 @@
 classdef OptimizationTest < matlab.unittest.TestCase
-
+    
     properties
         x_data
         y_data
         x_test
-    end    
+    end
     
     methods(TestMethodSetup)
         function create_data(testCase)
@@ -17,11 +17,26 @@ classdef OptimizationTest < matlab.unittest.TestCase
     
     methods (Test)
         function test_minFunc(testCase)
+            x = testCase.x_data;
+            y = testCase.y_data;
+            z = testCase.x_test;
             
-        end
-        
-        function test_minimize(testCase)
+            % model
+            hyperpriors = Hyperpriors();
+            covariance = Covariance.str2covariance('SE', hyperpriors);
+            model = GpModel(covariance, hyperpriors);
+                        
+            hyp = model.prior();
+            [new_hyp, nlZ] = minimize_minFunc(model, x, y, ...
+                'initial_hyperparameters', hyp, ...
+                'num_restarts', 0);
+            testCase.assertEqual(hyp, new_hyp)
             
+            [new_hyp, new_nlZ] = minimize_minFunc(model, x, y, ...
+                'initial_hyperparameters', hyp, ...
+                'num_restarts', 3);
+            testCase.assertNotEqual(new_hyp, hyp)
+            testCase.assertLessThan(new_nlZ, nlZ)
         end
         
     end

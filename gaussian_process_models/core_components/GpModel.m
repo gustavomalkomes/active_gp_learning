@@ -2,7 +2,7 @@ classdef GpModel
     properties
         name % string to represent the model
         %
-        % GPML and GPML extensions function handles
+        % GPML function handles
         %
         covariance % covariance object
         covariance_function % covariance function handle
@@ -20,15 +20,14 @@ classdef GpModel
         % attributes saved during training
         %
         theta % lastest model hyperparameters
-        L % choles
-        nlZ % the negative log MLE/MAP
-        HnlZ % a struct containing the Hessian of the negative log MAP/MLE
-        posterior % posterior structu as in GPML
+        negative_log_likelihood % the negative log MLE/MAP
+        theta_hessian % a struct containing the Hessian of the negative log MAP/MLE
+        theta_hessian_chol % cholesky decomposition
+        theta_posterior % posterior structu as in GPML
         %
         % attributes logging time
         %
         optimization_time % total optimization time
-        hessian_time % total time computing the hessian
         %
         % train options
         %
@@ -74,8 +73,6 @@ classdef GpModel
             obj.optimization_options.minFunc_options.Display  = 'off';
             obj.optimization_options.minFunc_options.MaxIter  = 1000;
             obj.optimization_options.minimize_options = [];
-            
-            
         end
         %
         % GP functions
@@ -93,7 +90,7 @@ classdef GpModel
             end
             
             if isempty(y_train)
-                y_train = obj.posterior;
+                y_train = obj.theta_posterior;
             end
             
             [ymu, ys2, fmu, fs2, log_probabilities] = obj.prediction_method(...
@@ -107,13 +104,19 @@ classdef GpModel
                 x_star);
         end
         
-        % update rotine 
         function [obj] = update(obj, x_train, y_train)
+            % Update rotine for updating a GpModel. 
+            % Standard behavior is to call the train method 
+            % but this function can be extended to more complex rotines.
+            %
+            % [OBJ] = UPDATE(OBJ, x_train, y_train)
+            % 
             obj = obj.train(x_train, y_train);
         end
         
-        % train hyperparameters using an (external) optimization procedure
         function [obj] = train(obj, x_train, y_train)
+            % Train the hyperparameters of a GPModel with training data
+            % x_data and y_train. 
             
             if obj.optimization_options.display > 0
                 number_of_parameters = numel(obj.theta);
@@ -125,67 +128,44 @@ classdef GpModel
             end
             
             initial_theta = obj.theta;
-            
             start_opt_time = tic;
-            try
-                [new_theta, new_nlZ, opt_output] = ...
+            [new_theta, new_nlZ, new_HnlZ, new_L, best_posterior, optimization_output] = ...
                     minimize_minFunc(obj, x_train, y_train, ...
                     'initial_hyperparameters', initial_theta, ...
                     'num_restarts', obj.optimization_options.num_restarts, ...
                     'minFunc_options', obj.optimization_options.minFunc_options);
-            catch ME
-                switch ME.identifier
-                    case 'AGPL:minimize_minFunc'
-                        warning('MinFunc minimize failed. Using minimize.m'); 
-                        try
-                            [new_theta, new_nlZ, opt_output] = ...
-                                minimize_minimize(obj, x_train, y_train, ...
-                                'initial_hyperparameters', initial_theta, ...
-                                'num_restarts', obj.optimization_options.num_restarts, ...
-                                'minimize_options', obj.optimization_options.minimize_options);
-                        catch
-                            error('AGPL:GpModel:train','Optimization failed'); 
-                        end
-                    otherwise
-                        rethrow(ME)
-                end                
-            end
             obj.optimization_time = toc(start_opt_time);
             
             % updating (hyp)parameters
-            obj.theta                   = new_theta;
+            obj.theta = new_theta;
             obj.negative_log_likelihood = new_nlZ;
-            obj.theta_hessian           = opt_output.HnlZ;
-            obj.theta_posterior         = opt_output.post;
-            
+            obj.theta_hessian = new_HnlZ;
+            obj.theta_hessian_chol = new_L;
+            obj.theta_posterior = best_posterior;
+        
             if obj.optimization_options.display > 0
                 fprintf('%s lZ: %-4.2f     cov_hyp: %-3d\tcov_name: %-50s\n', ...
-                    datestr(now,'yy-mmm-dd-HH:MM'), -obj.nlZ, ...
+                    datestr(now,'yy-mmm-dd-HH:MM'), -obj.negative_log_likelihood, ...
                     str2num(feval(obj.covariance_function{:})), ...
                     obj.covariance.name);
             end
             
             if obj.optimization_options.display > 1 ...
-                    && ~isempty(opt_output)
+                    && ~isempty(optimization_output)
                 
-                if isfield(opt_output, 'iterations')
+                if isfield(optimization_output, 'iterations')
                     fprintf('\t\tcov_hyp: %-3d   iter:%-4d        fun_count:%-4d \t\t %4.2f seconds\n', ...
                         str2num(feval(obj.covariance_function{:})), ...
-                        minFunc_output.iterations, ...
-                        opt_output.funcCount, ...
-                        opt_output);
+                        optimization_output.iterations, ...
+                        optimization_output.funcCount, ...
+                        obj.optimization_time);
                 end
                 
-                fprintf('\t\tcov_hyp: %-3d   H_time:%-4.2f seconds \t\t\t total_time: %4.2f seconds\n', ...
-                    str2num(feval(obj.covariance_function{:})), ...
-                    hessian_computation_time, ...
-                    hessian_computation_time+obj.optimization_time);
-                
-                if isfield(minFunc_output, 'firstorderopt')
-                    fprintf('\t\tcov_hyp: %-3d   opt: %-2.8f \t\t\t\t %s\n\n', ...
+                if isfield(optimization_output, 'firstorderopt')
+                    fprintf('\t\tcov_hyp: %-3d   first-order optimality: %-2.8f \t %s\n\n', ...
                         str2num(feval(obj.covariance_function{:})), ...
-                        minFunc_output.firstorderopt, ...
-                        minFunc_output.message);
+                        optimization_output.firstorderopt, ...
+                        optimization_output.message);
                 end
             end
         end
