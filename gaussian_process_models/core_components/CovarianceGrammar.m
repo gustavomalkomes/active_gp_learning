@@ -61,6 +61,36 @@ classdef CovarianceGrammar
             end
         end
         
+        function new_kernels = full_expand(obj, level)
+            current_kernels = obj.base_kernels(:);
+            if level == 0
+                new_kernels = current_kernels;
+                return
+            end
+            all_kernels = {};
+            while (level > 0)
+                this_level = {};
+                for i=1:numel(current_kernels)
+                    new_k = obj.expand(current_kernels{i});
+                    repeated = false(1, numel(new_k));
+                    for k=1:numel(new_k)
+                        for j=1:numel(all_kernels)
+                            if new_k{k} == all_kernels{j}
+                                repeated(k) = true;
+                                break;
+                            end
+                        end
+                    end
+                    this_level = [this_level, new_k(~repeated)];
+                    all_kernels = [all_kernels, new_k(~repeated)];
+                end
+                current_kernels = this_level;
+                level = level - 1;
+            end
+            new_kernels = all_kernels;
+            
+        end
+        
     end
     
 end

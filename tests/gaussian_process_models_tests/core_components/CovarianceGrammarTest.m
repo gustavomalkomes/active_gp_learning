@@ -124,6 +124,28 @@ classdef CovarianceGrammarTest < matlab.unittest.TestCase
                         
         end
 
+        function testFull_expand(testCase)
+           
+            root = {'SE', 'RQ'};
+            dim = 2;
+            grammar = CovarianceGrammar(root, dim, []);
+            
+            level = 0;
+            covariances = grammar.full_expand(level);
+            expected = numel(root)*dim;
+            testCase.assertEqual(expected, numel(covariances));
+            
+
+            level = 1;
+            covariances = grammar.full_expand(level);
+            expected = (numel(root)*dim+1)*numel(root)*dim;
+            testCase.assertEqual(expected, numel(covariances));
+            
+            level = 2;
+            covariances = grammar.full_expand(level);
+            expected = 134;
+            testCase.assertEqual(expected, numel(covariances));
+        end
     end
     
 end
