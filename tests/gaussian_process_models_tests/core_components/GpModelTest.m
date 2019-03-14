@@ -27,10 +27,9 @@ classdef GpModelTest < matlab.unittest.TestCase
             
             model = model.train(x,y);
             ys = model.predict(x,y,xs);
+            ys_post = model.predict(x,[],xs);
             
-            % just make sure we have predictions
-            % TODO expand this
-            testCase.assertEqual( numel(xs), numel(ys) ) 
+            testCase.assertTrue(sum(abs(ys - ys_post)) < 1e-6)
         end
     end
     

@@ -101,12 +101,10 @@ classdef Covariance
             
             assert(isa(hyperpriors, 'Hyperpriors'), 'Not a hyperpriors');
             
-            rnd_code_maximum_length = 100;
-            
+            rnd_code_maximum_length = 16;
+            rnd_code_max_digit = 100;
             is_base = true;
-            rnd_code = rand(1,rnd_code_maximum_length);
-            rnd_code = rnd_code.*randi(...
-                rnd_code_maximum_length,1,rnd_code_maximum_length);
+            rnd_code = randi(rnd_code_max_digit, 1, rnd_code_maximum_length);
             
             switch covariance_name
                 case 'SEard'
