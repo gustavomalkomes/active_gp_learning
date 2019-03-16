@@ -11,7 +11,7 @@ cd ..
 # https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html
 if [ ! -d "$minFunc" ]; then
     wget https://www.cs.ubc.ca/~schmidtm/Software/minFunc_2012.zip
-    unzip -a minFunc_2012.zipu
+    unzip -a minFunc_2012.zip
     rm minFunc_2012.zip
 fi
 

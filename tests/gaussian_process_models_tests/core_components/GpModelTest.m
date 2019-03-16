@@ -22,13 +22,14 @@ classdef GpModelTest < matlab.unittest.TestCase
             y = sin(3*x) + 0.1*randn(20, 1);  % 20 noisy training targets
             xs = linspace(-3, 3, 61)';        % 61 test inputs             
 
-            testCase.verifyError(@model.predict,'prediction_error:thetaIsEmpty')
+            testCase.verifyError(@model.predict, ...
+                'AGPL:GpModel:prediction:thetaIsEmpty')
+            
             model = model.train(x,y);
             ys = model.predict(x,y,xs);
+            ys_post = model.predict(x,[],xs);
             
-            % just make sure we have predictions
-            % TODO expand this
-            testCase.assertEqual( numel(xs), numel(ys) ) 
+            testCase.assertTrue(sum(abs(ys - ys_post)) < 1e-6)
         end
     end
     

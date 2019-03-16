@@ -1,4 +1,9 @@
 classdef Covariance
+    properties (Constant)
+        rnd_code_max_digit = 10;
+        rnd_code_maximum_length = 16;
+        rnd_code_truncation = 1e6;
+    end
     properties
         name % string to represent the model
         is_base % boolean to define if it is a base covariance
@@ -23,14 +28,14 @@ classdef Covariance
             new_name = [o1.name, '_', num2str(dimension)];
             new_is_base = true;
             
-            rnd_code_maximum_length = numel(o1.rnd_code);
-            new_rnd_code = rand(1,rnd_code_maximum_length);
-            new_rnd_code = new_rnd_code.*randi(...
-                rnd_code_maximum_length,1,rnd_code_maximum_length);
+            o1_rnd_code_maximum_length = numel(o1.rnd_code);
+            new_rnd_code = randi(o1.rnd_code_max_digit, 1, ...
+                o1_rnd_code_maximum_length);
+            new_rnd_code = mod(new_rnd_code, Covariance.rnd_code_truncation);
             
             new_function_handle = {@mask_covariance, {dimension, ...
                 o1.function_handle}};
-                        
+            
             new_priors = o1.priors;
             
             % create new covariance
@@ -43,6 +48,7 @@ classdef Covariance
             new_name = ['(', o1.name, '+', o2.name, ')'];
             new_is_base = false;
             new_rnd_code = o1.rnd_code + o2.rnd_code;
+            new_rnd_code = mod(new_rnd_code, Covariance.rnd_code_truncation);
             
             cov1 = o1.function_handle; cov2 = o2.function_handle;
             new_function_handle = {@sum_covariance,{cov1,cov2}};
@@ -58,6 +64,7 @@ classdef Covariance
             new_name = ['(', o1.name, '*', o2.name, ')'];
             new_is_base = false;
             new_rnd_code = o1.rnd_code .* o2.rnd_code;
+            new_rnd_code = mod(new_rnd_code, Covariance.rnd_code_truncation);
             
             cov1 = o1.function_handle; cov2 = o2.function_handle;
             new_function_handle = {@prod_covariance,{cov1,cov2}};
@@ -101,12 +108,12 @@ classdef Covariance
             
             assert(isa(hyperpriors, 'Hyperpriors'), 'Not a hyperpriors');
             
-            rnd_code_maximum_length = 100;
-            
             is_base = true;
-            rnd_code = rand(1,rnd_code_maximum_length);
-            rnd_code = rnd_code.*randi(...
-                rnd_code_maximum_length,1,rnd_code_maximum_length);
+            rnd_code = randi(...
+                Covariance.rnd_code_max_digit, ...
+                1, ...
+                Covariance.rnd_code_maximum_length...
+            );
             
             switch covariance_name
                 case 'SEard'
@@ -167,7 +174,7 @@ classdef Covariance
                 rnd_code, ...
                 function_handle, ...
                 priors...
-                ); 
+                );
         end
         
     end
