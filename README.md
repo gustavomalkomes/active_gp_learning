@@ -7,7 +7,7 @@ Usage
 ---------------
 
 This is a work in progress but you can check the two demos in the `demo`
-folder.
+folder. Any feedback would be greatly appreciated.
 
 Dependencies
 ---------------
@@ -19,10 +19,17 @@ You must have the following softwares in your MATLAB path:
   * gpml_extensions: https://github.com/rmgarnett/gpml_extensions.git
 
 You can run `get_dependencies.sh` to download these softwares.
-But please check the links first. Then, running the script `startup.m` will take care of adding them to your MATLAB path.
+But please check the links first. 
+
+Then, running the following script: 
+
+ - `automated_model_selection_startup.m` 
+
+will take care of adding them to your MATLAB path.
 
 
 Tests
 ---------------
 
-Running `run_tests` will trigger a couple of tests.
+Running `automated_model_selection_tests.m` 
+will trigger a couple of tests.
