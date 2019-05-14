@@ -39,7 +39,7 @@ classdef Hyperpriors
             obj.alpha_var            = 0.5;
 
             obj.lik_noise_std_mean   = log(data_noise);
-            obj.lik_noise_std_var    = 1;
+            obj.lik_noise_std_var    = 0.1;
 
             obj.mean_offset_mean     = 0;
             obj.mean_offset_var      = 1;

@@ -11,7 +11,7 @@ classdef HyperpriorsTest < matlab.unittest.TestCase
         alpha_mean_value = log(0.05);
         alpha_var_value = 0.5;
         lik_noise_std_mean_value = log(0.01);
-        lik_noise_std_var_value = 1;
+        lik_noise_std_var_value = 0.1;
         mean_offset_value = 0;
         mean_offset_var_value = 1;
     end
@@ -63,7 +63,7 @@ classdef HyperpriorsTest < matlab.unittest.TestCase
             testCase.verifyEqual(hyperpriors.lik_noise_std_mean, ...
                 log(data_noise));
             testCase.verifyEqual(hyperpriors.lik_noise_std_var, ...
-                1);
+                testCase.lik_noise_std_var_value);
             
             testCase.verifyEqual(hyperpriors.length_scale_mean, ...
                 testCase.length_scale_mean_value);

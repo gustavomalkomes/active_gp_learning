@@ -151,9 +151,9 @@ classdef Covariance
                         };
                     
                 case 'LIN'
-                    cov.fun = {@linear_covariance};
+                    cov.fun = {@linear_covariance_with_parameters};
                     cov.priors = {...
-                        hyperpriors.gaussian_prior('output_scale')
+                         hyperpriors.gaussian_prior('output_scale')
                         };
                     
                 case 'RQ'

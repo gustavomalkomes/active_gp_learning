@@ -10,11 +10,11 @@ classdef CovarianceNumericalTest < matlab.unittest.TestCase
             
             %% checking linear_covariance
             n_param = 1;
-            fun_fx = @(hyp,i)   linear_covariance(hyp,xx,zz,i);
-            fun_dx = @(hyp,i,j) linear_covariance(hyp,xx,zz,i,j);
+            fun_fx = @(hyp,i)   linear_covariance_with_parameters(hyp,xx,zz,i);
+            fun_dx = @(hyp,i,j) linear_covariance_with_parameters(hyp,xx,zz,i,j);
             
             [diff,a,b] = check_hessian(fun_fx,fun_dx,randn(n_param,1),g_tol,n);
-            testCase.assertTrue(diff<e_tol,'linear_covariance Hessian doesnt match');
+            testCase.assertTrue(diff<e_tol,'linear_covariance_with_parameters Hessian doesnt match');
             
             %% checking isotropic_rq_covariance
             n_param = 3;
